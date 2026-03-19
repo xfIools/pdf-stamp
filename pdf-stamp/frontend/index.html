@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>PDF 智能盖章</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
+      background: #f0f2f5;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+    }
+    .card {
+      background: #fff;
+      border-radius: 12px;
+      padding: 40px;
+      width: 480px;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+    }
+    h1 {
+      font-size: 22px;
+      color: #1a1a1a;
+      margin-bottom: 8px;
+    }
+    p.sub {
+      color: #888;
+      font-size: 14px;
+      margin-bottom: 28px;
+    }
+    .upload-area {
+      border: 2px dashed #d9d9d9;
+      border-radius: 8px;
+      padding: 20px;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color 0.2s;
+      margin-bottom: 16px;
+      position: relative;
+    }
+    .upload-area:hover { border-color: #4f6ef7; }
+    .upload-area input[type="file"] {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      cursor: pointer;
+    }
+    .upload-area .icon { font-size: 32px; margin-bottom: 8px; }
+    .upload-area .label { color: #555; font-size: 14px; }
+    .upload-area .filename { color: #4f6ef7; font-size: 13px; margin-top: 6px; }
+    .preview-stamp {
+      max-width: 80px;
+      max-height: 80px;
+      margin-top: 8px;
+      border-radius: 4px;
+    }
+    button {
+      width: 100%;
+      padding: 14px;
+      background: #4f6ef7;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      cursor: pointer;
+      margin-top: 8px;
+      transition: background 0.2s;
+    }
+    button:hover:not(:disabled) { background: #3a57e8; }
+    button:disabled { background: #b0b8f0; cursor: not-allowed; }
+    .status {
+      margin-top: 16px;
+      font-size: 14px;
+      color: #555;
+      text-align: center;
+      min-height: 20px;
+    }
+    .status.error { color: #e53e3e; }
+    .status.success { color: #38a169; }
+    .progress {
+      width: 100%;
+      height: 6px;
+      background: #eee;
+      border-radius: 3px;
+      margin-top: 12px;
+      overflow: hidden;
+      display: none;
+    }
+    .progress-bar {
+      height: 100%;
+      background: #4f6ef7;
+      width: 0%;
+      transition: width 0.3s;
+      border-radius: 3px;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>📄 PDF 智能盖章</h1>
+    <p class="sub">AI 自动识别每页空白区域，精准盖章</p>
+
+    <div class="upload-area" id="pdfArea">
+      <input type="file" id="pdfInput" accept=".pdf" />
+      <div class="icon">📑</div>
+      <div class="label">点击上传 PDF 文件</div>
+      <div class="filename" id="pdfName"></div>
+    </div>
+
+    <div class="upload-area" id="stampArea">
+      <input type="file" id="stampInput" accept="image/*" />
+      <div class="icon">🔖</div>
+      <div class="label">点击上传印章图片（支持PNG透明背景）</div>
+      <div class="filename" id="stampName"></div>
+      <img class="preview-stamp" id="stampPreview" style="display:none" />
+    </div>
+
+    <button id="submitBtn" disabled>开始盖章</button>
+
+    <div class="progress" id="progressWrap">
+      <div class="progress-bar" id="progressBar"></div>
+    </div>
+    <div class="status" id="status"></div>
+  </div>
+
+  <script>
+    const pdfInput = document.getElementById("pdfInput");
+    const stampInput = document.getElementById("stampInput");
+    const pdfName = document.getElementById("pdfName");
+    const stampName = document.getElementById("stampName");
+    const stampPreview = document.getElementById("stampPreview");
+    const submitBtn = document.getElementById("submitBtn");
+    const status = document.getElementById("status");
+    const progressWrap = document.getElementById("progressWrap");
+    const progressBar = document.getElementById("progressBar");
+
+    function checkReady() {
+      submitBtn.disabled = !(pdfInput.files[0] && stampInput.files[0]);
+    }
+
+    pdfInput.addEventListener("change", () => {
+      pdfName.textContent = pdfInput.files[0]?.name || "";
+      checkReady();
+    });
+
+    stampInput.addEventListener("change", () => {
+      const file = stampInput.files[0];
+      if (file) {
+        stampName.textContent = file.name;
+        const url = URL.createObjectURL(file);
+        stampPreview.src = url;
+        stampPreview.style.display = "block";
+      }
+      checkReady();
+    });
+
+    submitBtn.addEventListener("click", async () => {
+      const formData = new FormData();
+      formData.append("pdf", pdfInput.files[0]);
+      formData.append("stamp", stampInput.files[0]);
+
+      submitBtn.disabled = true;
+      status.className = "status";
+      status.textContent = "正在处理，AI 识别每页空白区域中...";
+      progressWrap.style.display = "block";
+
+      // 模拟进度条
+      let prog = 0;
+      const timer = setInterval(() => {
+        prog = Math.min(prog + 2, 85);
+        progressBar.style.width = prog + "%";
+      }, 400);
+
+      try {
+        const res = await fetch("http://localhost:5000/stamp", {
+          method: "POST",
+          body: formData
+        });
+
+        clearInterval(timer);
+        progressBar.style.width = "100%";
+
+        if (!res.ok) {
+          const err = await res.json();
+          throw new Error(err.error || "服务器错误");
+        }
+
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "stamped.pdf";
+        a.click();
+
+        status.className = "status success";
+        status.textContent = "✅ 盖章完成，已自动下载！";
+      } catch (e) {
+        clearInterval(timer);
+        status.className = "status error";
+        status.textContent = "❌ 出错：" + e.message;
+      } finally {
+        submitBtn.disabled = false;
+        setTimeout(() => { progressBar.style.width = "0%"; progressWrap.style.display = "none"; }, 2000);
+      }
+    });
+  </script>
+</body>
+</html>
