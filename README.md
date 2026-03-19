@@ -15,11 +15,11 @@
 
 ### Windows 桌面工具（exe）
 
-下载 [`pdf-stamp/dist/PDF盖章工具.exe`](pdf-stamp/dist/PDF盖章工具.exe)，双击运行，自动打开浏览器，上传 PDF 和印章图片即可。
+前往 [Releases](../../releases/latest) 下载 `PDF盖章工具.exe`，双击运行，自动打开浏览器，上传 PDF 和印章图片即可。
 
 ### Java SDK
 
-下载 [`pdf-stamp-sdk/target/pdf-stamp-sdk-1.0.0.jar`](pdf-stamp-sdk/target/pdf-stamp-sdk-1.0.0.jar)，加入项目 classpath，三行代码完成盖章：
+前往 [Releases](../../releases/latest) 下载 `pdf-stamp-sdk-1.0.0.jar`，加入项目 classpath，三行代码完成盖章：
 
 ```java
 PdfStamper stamper = new PdfStamper.Builder().stampSize(80).build();
